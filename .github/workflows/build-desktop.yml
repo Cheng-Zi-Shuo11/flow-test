@@ -75,6 +75,7 @@ jobs:
         with:
           name: FlowTest-macOS
           path: dist/*.dmg
+          retention-days: 1
           if-no-files-found: error
 
   windows:
@@ -121,6 +122,7 @@ jobs:
         with:
           name: FlowTest-Windows
           path: dist/*.zip
+          retention-days: 1
           if-no-files-found: error
 
   release:
