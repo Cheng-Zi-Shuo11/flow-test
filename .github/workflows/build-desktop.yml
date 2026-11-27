@@ -21,9 +21,9 @@ permissions:
 
 jobs:
   macos:
-    name: macOS arm64
-    runs-on: macos-14
-    # 私有仓库在免费账户下不支持 macOS runner，公开仓库才构建，私有仓库自动跳过
+    name: macOS x64
+    runs-on: macos-13
+    # 免费账户拿不到 arm64 runner（macos-14-arm64 报 not supported），改用 Intel runner
     if: ${{ !github.event.repository.private }}
     steps:
       - uses: actions/checkout@v4
