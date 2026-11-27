@@ -1,0 +1,43 @@
+{
+  "name": "示例登录流程",
+  "description": "验证正确账号密码能登录成功；用变量注入地址与凭据，可复用于任意站点",
+  "config": {
+    "baseUrl": "http://localhost:8899",
+    "variables": {
+      "username": "admin",
+      "password": "123456"
+    },
+    "timeout": 10000,
+    "viewport": { "width": 1280, "height": 720 }
+  },
+  "steps": [
+    {
+      "name": "打开登录页",
+      "action": "navigate",
+      "target": { "by": "url", "value": "/" }
+    },
+    {
+      "name": "输入用户名",
+      "action": "fill",
+      "target": { "by": "placeholder", "value": "用户名" },
+      "value": "${username}"
+    },
+    {
+      "name": "输入密码",
+      "action": "fill",
+      "target": { "by": "placeholder", "value": "密码" },
+      "value": "${password}"
+    },
+    {
+      "name": "点击登录",
+      "action": "click",
+      "target": { "by": "role", "value": "button:登录" }
+    },
+    {
+      "name": "验证登录成功",
+      "action": "assert",
+      "target": { "by": "text", "value": "登录成功" },
+      "assert": { "type": "textContains", "value": "登录成功" }
+    }
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "name": "变量注入与多环境切换示例",
+  "description": "地址、账号、密码、角色、期望文案全部用 ${变量} 占位。默认指向本机高级示例站，运行时用 --var baseUrl=... --var username=... 即可切换环境，步骤无需改动。",
+  "config": {
+    "baseUrl": "${baseUrl}",
+    "variables": {
+      "baseUrl": "http://localhost:8899",
+      "username": "admin",
+      "password": "123456",
+      "role": "admin",
+      "expectedWelcome": "登录成功"
+    },
+    "timeout": 10000,
+    "viewport": { "width": 1280, "height": 720 }
+  },
+  "steps": [
+    {
+      "name": "打开被测站点（地址来自变量）",
+      "action": "navigate",
+      "target": { "by": "url", "value": "${baseUrl}/advanced.html" }
+    },
+    {
+      "name": "输入账号（来自变量）",
+      "action": "fill",
+      "target": { "by": "placeholder", "value": "用户名" },
+      "value": "${username}"
+    },
+    {
+      "name": "输入密码（来自变量）",
+      "action": "fill",
+      "target": { "by": "placeholder", "value": "密码" },
+      "value": "${password}"
+    },
+    {
+      "name": "选择角色（来自变量）",
+      "action": "select",
+      "target": { "by": "label", "value": "角色" },
+      "value": "${role}"
+    },
+    {
+      "name": "点击登录",
+      "action": "click",
+      "target": { "by": "role", "value": "button:登录" }
+    },
+    {
+      "name": "验证欢迎文案（期望值来自变量）",
+      "action": "assert",
+      "target": { "by": "text", "value": "${expectedWelcome}" },
+      "assert": { "type": "textContains", "value": "${expectedWelcome}" }
+    },
+    {
+      "name": "验证当前环境地址（来自变量）",
+      "action": "assert",
+      "target": { "by": "url", "value": "${baseUrl}" },
+      "assert": { "type": "urlContains", "value": "${baseUrl}" }
+    }
+  ]
+}

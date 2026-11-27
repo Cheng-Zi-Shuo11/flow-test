@@ -1,0 +1,129 @@
+# FlowTest 桌面客户端双平台构建
+#
+# 触发方式：
+#   1. 推送 tag（如 v0.1.0）自动构建并创建 Release
+#   2. 在 Actions 页面手动触发（workflow_dispatch），产物在 Artifacts 里下载
+#
+# 产物：
+#   - FlowTest-macOS-arm64.dmg   （Apple Silicon）
+#   - FlowTest-Windows-x64.zip   （解压即用）
+
+name: Build Desktop Packages
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  macos:
+    name: macOS arm64
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      # 引擎依赖必须在当前平台重新安装，避免跨平台二进制不兼容
+      - name: Install engine dependencies
+        run: npm ci
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.50.1"
+          channel: stable
+          cache: true
+
+      - name: Flutter dependencies
+        working-directory: flutter_client
+        run: flutter pub get
+
+      # 首次构建时补齐平台工程目录（正常应在仓库中已提交）
+      - name: Ensure macOS project files
+        working-directory: flutter_client
+        run: |
+          if [ ! -d macos ]; then
+            flutter create --platforms=macos --project-name flowtest_client .
+          fi
+
+      - name: Build macOS app
+        working-directory: flutter_client
+        run: flutter build macos --release
+
+      - name: Package DMG
+        run: bash scripts/package-macos.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: FlowTest-macOS
+          path: dist/*.dmg
+          if-no-files-found: error
+
+  windows:
+    name: Windows x64
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install engine dependencies
+        run: npm ci
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.50.1"
+          channel: stable
+          cache: true
+
+      - name: Flutter dependencies
+        working-directory: flutter_client
+        run: flutter pub get
+
+      - name: Ensure Windows project files
+        working-directory: flutter_client
+        shell: pwsh
+        run: |
+          if (-not (Test-Path windows)) {
+            flutter create --platforms=windows --project-name flowtest_client .
+          }
+
+      - name: Build Windows app
+        working-directory: flutter_client
+        run: flutter build windows --release
+
+      - name: Package ZIP
+        shell: pwsh
+        run: ./scripts/package-windows.ps1
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: FlowTest-Windows
+          path: dist/*.zip
+          if-no-files-found: error
+
+  release:
+    name: Attach packages to release
+    needs: [macos, windows]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*
+          generate_release_notes: true

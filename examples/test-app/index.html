@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><title>FlowTest 示例站点</title>
+<style>
+body { font-family: sans-serif; max-width: 480px; margin: 60px auto; padding: 20px; }
+input, button { display: block; width: 100%; padding: 10px; margin: 10px 0; font-size: 14px; }
+#result { margin-top: 20px; padding: 12px; background: #e1f5ee; border-radius: 8px; display: none; }
+.hidden { display: none !important; }
+</style></head>
+<body>
+<h1>示例登录页</h1>
+<form id="loginForm">
+  <input type="text" placeholder="用户名" id="username" name="username">
+  <input type="password" placeholder="密码" id="password" name="password">
+  <button type="submit" id="loginBtn">登录</button>
+</form>
+<div id="result">欢迎，<span id="welcomeName"></span>！登录成功。</div>
+<script>
+document.getElementById("loginForm").addEventListener("submit", event => {
+  event.preventDefault()
+  const username = document.getElementById("username").value
+  const password = document.getElementById("password").value
+  if (username === "admin" && password === "123456") {
+    document.getElementById("welcomeName").textContent = username
+    document.getElementById("result").style.display = "block"
+  } else {
+    alert("用户名或密码错误")
+  }
+})
+</script>
+</body></html>

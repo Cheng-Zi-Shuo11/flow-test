@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FlowTest 高级示例站</title>
+<style>
+  body { font-family: sans-serif; max-width: 640px; margin: 40px auto; padding: 20px; color: #222; }
+  h1 { color: #2c3e50; }
+  fieldset { border: 1px solid #ccc; border-radius: 8px; margin: 20px 0; padding: 16px; }
+  legend { font-weight: bold; padding: 0 6px; }
+  label { display: block; margin-top: 10px; font-weight: 600; }
+  input, select, button { font-size: 14px; padding: 8px; margin: 4px 0; box-sizing: border-box; }
+  input, select { width: 100%; max-width: 320px; display: block; }
+  button { cursor: pointer; padding: 8px 16px; margin-right: 8px; }
+  #status { display: inline-block; padding: 4px 10px; background: #eef; border-radius: 4px; }
+  #secret { display: none; color: #999; }
+  #welcome, #error, #results { display: none; margin-top: 14px; padding: 12px; border-radius: 8px; }
+  #welcome { background: #e1f5ee; }
+  #error { background: #ffe9e9; color: #b00; }
+  #results { background: #eef4ff; }
+  .actions { margin-top: 10px; }
+</style>
+</head>
+<body>
+<h1>高级示例站</h1>
+<p>当前状态：<span id="status">准备就绪</span></p>
+<div id="secret">这是一段隐藏内容，用于 hidden 断言演示</div>
+
+<fieldset>
+  <legend>登录表单</legend>
+  <form id="loginForm">
+    <label for="username">用户名</label>
+    <input type="text" id="username" name="username" placeholder="用户名">
+
+    <label for="password">密码</label>
+    <input type="password" id="password" name="password" placeholder="密码">
+
+    <label for="role">角色</label>
+    <select id="role" name="role">
+      <option value="">请选择角色</option>
+      <option value="admin">管理员</option>
+      <option value="user">普通用户</option>
+    </select>
+
+    <div class="actions">
+      <button type="submit" id="loginBtn">登录</button>
+      <button type="button" class="action-btn">保存</button>
+      <button type="button" class="action-btn">重置</button>
+      <button type="button" class="action-btn">取消</button>
+    </div>
+  </form>
+  <div id="welcome">欢迎回来，登录成功！</div>
+  <div id="error">用户名或密码错误，请重试</div>
+</fieldset>
+
+<fieldset>
+  <legend>搜索演示</legend>
+  <label for="search">搜索关键词</label>
+  <input type="text" id="search" placeholder="搜索">
+  <div class="actions"><button type="button" id="searchBtn">搜索</button></div>
+  <div id="results">结果列表：共 3 条记录</div>
+</fieldset>
+
+<script>
+const $ = id => document.getElementById(id)
+
+$("loginForm").addEventListener("submit", event => {
+  event.preventDefault()
+  const ok = $("username").value === "admin" && $("password").value === "123456"
+  $("welcome").style.display = ok ? "block" : "none"
+  $("error").style.display = ok ? "none" : "block"
+  $("status").textContent = ok ? "已登录" : "登录失败"
+})
+
+$("searchBtn").addEventListener("click", () => {
+  $("results").style.display = "block"
+})
+</script>
+</body>
+</html>

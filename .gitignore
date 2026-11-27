@@ -1,0 +1,20 @@
+node_modules/
+reports/
+flows/
+dist/
+*.log
+.DS_Store
+
+# Flutter 客户端
+flutter_client/build/
+flutter_client/bundled_engine/
+flutter_client/.dart_tool/
+flutter_client/.flutter-plugins
+flutter_client/.flutter-plugins-dependencies
+flutter_client/.packages
+flutter_client/ios/Pods/
+flutter_client/macos/Pods/
+
+# 临时下载
+flutter_sdk_auto.zip
+flutter_macos.zip

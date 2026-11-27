@@ -1,0 +1,35 @@
+FlowTest 首次打开说明
+========================
+
+本应用未经过 Apple 公证，首次打开时系统可能提示
+「无法验证开发者」或「已损坏，无法打开」。这是 macOS 的安全机制，
+不是应用本身有问题。任选一种方式放行：
+
+方式一（推荐）
+  1. 把 FlowTest.app 拖进「应用程序」文件夹
+  2. 在应用上按住 Control 键点击（或右键），选择「打开」
+  3. 弹窗中再点一次「打开」
+
+方式二（终端）
+  打开「终端」，执行：
+    xattr -dr com.apple.quarantine /Applications/FlowTest.app
+
+方式三（系统设置）
+  打开「系统设置 → 隐私与安全性」，
+  在页面底部找到被拦截的应用，点击「仍要打开」。
+
+
+浏览器依赖
+==========
+
+FlowTest 需要本机有 Chrome 或 Edge 来执行测试。
+macOS 自带 Safari，不满足要求，请先安装 Google Chrome 或 Microsoft Edge。
+应用默认使用系统 Chrome；若只有 Edge，可在界面「浏览器」下拉中切换。
+
+
+数据位置
+========
+
+测试报告保存在应用包内的 bundled_engine/reports 目录，
+流程文件保存在 bundled_engine/flows 目录。
+如需长期保存，请在应用内使用「保存」功能导出流程 JSON。

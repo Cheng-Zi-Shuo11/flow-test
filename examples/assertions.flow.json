@@ -1,0 +1,94 @@
+{
+  "name": "断言类型大全示例",
+  "description": "演示 9 种断言：title / urlContains / visible / hidden / text / count / enabled / value / textContains。所有步骤指向 test-app/advanced.html，可配合 python3 -m http.server 8899 运行。",
+  "config": {
+    "baseUrl": "http://localhost:8899",
+    "variables": {},
+    "timeout": 10000,
+    "viewport": { "width": 1280, "height": 720 }
+  },
+  "steps": [
+    {
+      "name": "打开高级示例站",
+      "action": "navigate",
+      "target": { "by": "url", "value": "/advanced.html" }
+    },
+    {
+      "name": "断言页面标题",
+      "action": "assert",
+      "target": { "by": "css", "value": "body" },
+      "assert": { "type": "title", "value": "FlowTest 高级示例站" }
+    },
+    {
+      "name": "断言 URL 包含 advanced.html",
+      "action": "assert",
+      "target": { "by": "url", "value": "/advanced.html" },
+      "assert": { "type": "urlContains", "value": "advanced.html" }
+    },
+    {
+      "name": "断言主标题可见",
+      "action": "assert",
+      "target": { "by": "text", "value": "高级示例站" },
+      "assert": { "type": "visible" }
+    },
+    {
+      "name": "断言隐藏元素不可见",
+      "action": "assert",
+      "target": { "by": "css", "value": "#secret" },
+      "assert": { "type": "hidden" }
+    },
+    {
+      "name": "断言状态文本完全相同",
+      "action": "assert",
+      "target": { "by": "css", "value": "#status" },
+      "assert": { "type": "text", "value": "准备就绪" }
+    },
+    {
+      "name": "断言操作按钮数量为 3",
+      "action": "assert",
+      "target": { "by": "css", "value": ".action-btn" },
+      "assert": { "type": "count", "value": "3" }
+    },
+    {
+      "name": "断言登录按钮可用",
+      "action": "assert",
+      "target": { "by": "role", "value": "button:登录" },
+      "assert": { "type": "enabled" }
+    },
+    {
+      "name": "输入用户名",
+      "action": "fill",
+      "target": { "by": "placeholder", "value": "用户名" },
+      "value": "admin"
+    },
+    {
+      "name": "输入密码",
+      "action": "fill",
+      "target": { "by": "placeholder", "value": "密码" },
+      "value": "123456"
+    },
+    {
+      "name": "断言用户名输入框的值",
+      "action": "assert",
+      "target": { "by": "placeholder", "value": "用户名" },
+      "assert": { "type": "value", "value": "admin" }
+    },
+    {
+      "name": "选择角色为管理员",
+      "action": "select",
+      "target": { "by": "label", "value": "角色" },
+      "value": "admin"
+    },
+    {
+      "name": "点击登录",
+      "action": "click",
+      "target": { "by": "role", "value": "button:登录" }
+    },
+    {
+      "name": "断言登录成功文案可见且包含关键字",
+      "action": "assert",
+      "target": { "by": "text", "value": "登录成功" },
+      "assert": { "type": "textContains", "value": "登录成功" }
+    }
+  ]
+}

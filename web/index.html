@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FlowTest - 通用自动化流程测试</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header>
+  <div class="brand">FlowTest <span>通用 Web 自动化流程测试</span></div>
+  <div class="llm-status" id="llmStatus">检测中...</div>
+</header>
+
+<main>
+  <section class="panel editor">
+    <div class="panel-head">
+      <h2>流程编排</h2>
+      <div class="actions">
+        <button id="btnNew">新建</button>
+        <button id="btnSave">保存</button>
+        <button id="btnRun" class="primary">运行测试</button>
+      </div>
+    </div>
+
+    <label>已保存流程 <span class="hint">选择后自动载入编辑器</span></label>
+    <select id="savedFlow"><option value="">-- 选择已保存流程 --</option></select>
+
+    <label>流程名称</label>
+    <input id="flowName" value="未命名流程" />
+
+    <label>被测地址（baseUrl）</label>
+    <input id="baseUrl" placeholder="http://localhost:8888" />
+
+    <label>操作步骤 <span class="hint">支持自然语言，例如：打开 /login → 输入用户名 admin → 点击登录 → 验证出现首页</span></label>
+    <textarea id="stepsText" placeholder="打开 /login&#10;在用户名输入框输入 admin&#10;在密码输入框输入 123456&#10;点击登录按钮&#10;验证页面出现欢迎"></textarea>
+
+    <div class="parse-row">
+      <button id="btnParse" class="secondary">解析为结构化步骤</button>
+      <label class="inline"><input type="checkbox" id="useRules" /> 强制规则解析</label>
+      <span id="parseInfo" class="hint"></span>
+    </div>
+
+    <details id="structuredBox">
+      <summary>结构化步骤（可手动调整 JSON）</summary>
+      <textarea id="structuredJson" class="mono"></textarea>
+    </details>
+
+    <label>变量（JSON，可选）</label>
+    <textarea id="variables" class="mono small">{}</textarea>
+
+    <label>浏览器</label>
+    <select id="browserChannel">
+      <option value="">Playwright Chromium（需先下载）</option>
+      <option value="chrome" selected>系统 Chrome（本机已装）</option>
+      <option value="msedge">系统 Edge</option>
+    </select>
+  </section>
+
+  <section class="panel result">
+    <div class="panel-head"><h2>执行结果</h2><span id="runSummary" class="hint">尚未运行</span></div>
+    <div id="resultTable"></div>
+    <div class="reports">
+      <h3>历史报告</h3>
+      <div id="reportList" class="hint">加载中...</div>
+    </div>
+  </section>
+</main>
+
+<div id="toast" class="toast"></div>
+<script src="/app.js"></script>
+</body>
+</html>
