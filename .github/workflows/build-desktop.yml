@@ -23,6 +23,8 @@ jobs:
   macos:
     name: macOS arm64
     runs-on: macos-14
+    # 私有仓库在免费账户下不支持 macOS runner，公开仓库才构建，私有仓库自动跳过
+    if: ${{ !github.event.repository.private }}
     steps:
       - uses: actions/checkout@v4
 
@@ -124,7 +126,8 @@ jobs:
   release:
     name: Attach packages to release
     needs: [macos, windows]
-    if: startsWith(github.ref, 'refs/tags/')
+    # macOS 任务在私有仓库会被跳过，只要 Windows 成功就发布（有 mac 产物时一并挂上）
+    if: always() && startsWith(github.ref, 'refs/tags/') && needs.windows.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
