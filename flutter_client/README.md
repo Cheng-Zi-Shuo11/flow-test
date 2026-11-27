@@ -28,6 +28,17 @@ FlowTest 的桌面客户端：用 Flutter 提供界面，内嵌 Node.js 执行�
 ## 开发模式运行
 
 前置条件：Flutter SDK（桌面支持已启用）、Node.js >= 20、主项目已执行 `npm install`。
+**macOS 上运行/构建还需要完整 Xcode**（`xcode-select -p` 指向 Xcode.app，只有 Command Line Tools 会报 `Xcode not installed`）。
+
+不依赖 Xcode 的两道门禁（改完代码先跑这两个）：
+
+```bash
+cd /Users/chengzishuo/work/fy/flow-test/flutter_client
+flutter analyze   # 当前零问题
+flutter test      # 6 个界面冒烟测试，用假 API，不启动引擎
+```
+
+运行应用：
 
 ```bash
 cd /Users/chengzishuo/work/fy/flow-test/flutter_client

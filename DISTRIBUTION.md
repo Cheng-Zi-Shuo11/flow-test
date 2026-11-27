@@ -32,28 +32,54 @@ Flutter 不支持在 macOS 上交叉编译 Windows 桌面应用。要在 Mac 上
 
 ## 方式一：本机打包 macOS
 
-### 1. 装 Flutter
+### 1. 装 Flutter（已完成）
 
 ```bash
-cd ~/work/fy
-curl -L -o flutter_macos.zip \
-  "https://storage.flutter-io.cn/flutter_infra_release/releases/stable/macos/flutter_macos_arm64_3.50.1-stable.zip"
-unzip -q flutter_macos.zip && mv flutter flutter-sdk
-
-echo 'export PATH="$HOME/work/fy/flutter-sdk/bin:$PATH"' >> ~/.zshrc
+# 当前机器已装在 ~/work/fy/flutter（3.50.1 / Dart 3.14.0）
+echo 'export PATH="$HOME/work/fy/flutter/bin:$PATH"' >> ~/.zshrc
 source ~/.zshrc
-flutter doctor
+flutter --version
 ```
 
-### 2. 生成平台工程目录（首次）
+### 2. 装 Xcode（本机打包的前提）
+
+`flutter build macos` 必须有完整 Xcode，只有 Command Line Tools 会直接失败：
+
+```
+xcodebuild: error: tool 'xcodebuild' requires Xcode,
+but active developer directory '/Library/Developer/CommandLineTools' is a command line tools instance
+```
+
+安装步骤：
+
+1. App Store 搜索 Xcode 安装（约 10GB，磁盘需预留 40GB 以上）
+2. 切换开发者目录并同意协议：
+
+```bash
+sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+sudo xcodebuild -license accept
+```
+
+3. 装 CocoaPods（url_launcher 等插件依赖）：
+
+```bash
+brew install cocoapods
+```
+
+4. 验证：
+
+```bash
+flutter doctor -v   # Xcode 一项应为 ✓
+```
+
+### 3. 生成平台工程目录（已完成，仓库中已有）
 
 ```bash
 cd ~/work/fy/flow-test/flutter_client
-flutter create --platforms=macos --project-name flowtest_client .
 flutter pub get
 ```
 
-### 3. 构建并打包
+### 4. 构建并打包
 
 ```bash
 cd ~/work/fy/flow-test
@@ -62,6 +88,10 @@ bash scripts/package-macos.sh
 ```
 
 产物：`dist/FlowTest-macOS-arm64.dmg`
+
+> 只想先验证代码能不能跑，不必等 Xcode：
+> `cd flutter_client && flutter test`（6 个界面冒烟测试）和 `flutter analyze`（零问题）
+> 都能在没有 Xcode 的环境下跑通。
 
 ### 4. 发给别人
 
