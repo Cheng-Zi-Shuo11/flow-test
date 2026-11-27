@@ -11,15 +11,16 @@
 - **三种使用形态**：Web 界面、CLI、Flutter 桌面客户端（Windows / macOS），共用同一套执行引擎。
 - **LLM 可配置**：填自己的 API Key 即用 AI 解析任意表述；不填则降级为规则，功能不受影响。
 
-## 三种形态
+## 四种形态
 
 | 形态 | 入口 | 适用场景 |
 |---|---|---|
 | Web | `npm start` → http://localhost:3777 | 本机快速编写与查看 |
 | CLI | `node src/cli.js run/batch/parse` | CI 自动执行 |
 | 桌面客户端 | `flutter_client/` | 分发给非技术同事，双击即用，内置引擎无需装环境 |
+| MCP Server | `npm run mcp` → stdio | 让 Claude Desktop / Cursor 等 AI 直接调用平台能力 |
 
-桌面客户端的打包与分发见 [DISTRIBUTION.md](./DISTRIBUTION.md)。
+桌面客户端的打包与分发见 [DISTRIBUTION.md](./DISTRIBUTION.md)，MCP 接入见 [MCP.md](./MCP.md)。
 
 ## 快速开始
 

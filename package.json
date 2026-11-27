@@ -5,11 +5,13 @@
   "type": "module",
   "description": "通用 Web 自动化流程测试平台：写操作流程，自动执行并出报告",
   "bin": {
-    "flowtest": "./src/cli.js"
+    "flowtest": "./src/cli.js",
+    "flowtest-mcp": "./src/mcp-server.js"
   },
   "scripts": {
     "dev": "node src/server.js",
     "start": "node src/server.js",
+    "mcp": "node src/mcp-server.js",
     "test": "node --test tests/*.test.js",
     "verify": "node src/cli.js run examples/demo.flow.json"
   },
