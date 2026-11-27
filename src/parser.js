@@ -14,7 +14,7 @@ const SYSTEM_PROMPT = `你是 Web 自动化测试步骤解析器。把用户的�
 {
   "name": "步骤简述",
   "action": "navigate|click|fill|select|hover|press|wait|screenshot|assert",
-  "target": { "by": "role|label|placeholder|text|testId|css", "value": "..." },
+  "target": { "by": "role|label|placeholder|text|textExact|testId|css", "value": "..." },
   "value": "输入内容或断言期望值（可选）",
   "assert": { "type": "visible|textContains|urlContains|count|...", "value": "..." }
 }
@@ -22,7 +22,8 @@ const SYSTEM_PROMPT = `你是 Web 自动化测试步骤解析器。把用户的�
 规则：
 - 只输出 JSON 数组，不要解释文字。
 - 打开/访问某个地址 → navigate，target 为 {by:"url", value:"地址"}。
-- "点击 XX 按钮" → click，优先用 role:"button" + name 定位。
+- "点击 XX 按钮" → click，用 role:"button" + name 定位（格式 "button:XX"）。
+- 菜单项、导航项、页签、选项卡、链接、列表项 → click，用 text 定位，不要用 role:"button"。
 - "在 XX 输入框输入 YY" → fill，target 用 placeholder 或 label。
 - "验证/确认/应该出现 XX" → assert，默认 type 为 visible 或 textContains。
 - 无法确定的元素用 text 定位。
@@ -30,7 +31,11 @@ const SYSTEM_PROMPT = `你是 Web 自动化测试步骤解析器。把用户的�
 
 示例：
 用户："打开首页，在搜索框输入 rain，点击搜索按钮，验证出现结果列表"
-输出：[{"name":"打开首页","action":"navigate","target":{"by":"url","value":"/"}},{"name":"输入搜索词","action":"fill","target":{"by":"placeholder","value":"搜索"},"value":"rain"},{"name":"点击搜索","action":"click","target":{"by":"role","value":"button:搜索"}},{"name":"验证结果","action":"assert","target":{"by":"text","value":"结果列表"},"assert":{"type":"visible"}}]`
+输出：[{"name":"打开首页","action":"navigate","target":{"by":"url","value":"/"}},{"name":"输入搜索词","action":"fill","target":{"by":"placeholder","value":"搜索"},"value":"rain"},{"name":"点击搜索","action":"click","target":{"by":"role","value":"button:搜索"}},{"name":"验证结果","action":"assert","target":{"by":"text","value":"结果列表"},"assert":{"type":"visible"}}]
+
+示例（菜单）：
+用户："点击顶部菜单的站点实况"
+输出：[{"name":"点击站点实况菜单","action":"click","target":{"by":"text","value":"站点实况"}}]`
 
 /** 调用 OpenAI 兼容接口解析；失败时抛错，由调用方决定是否降级 */
 export async function parseWithLLM(text, llmConfig) {
@@ -121,9 +126,13 @@ export function parseWithRules(text) {
     // 点击
     const clickMatch = line.match(/(?:点击|单击|按下|选择)\s*(?:「|"|')?([^」"'，,。]+)/)
     if (clickMatch && !/按钮.*验证/.test(line)) {
-      const targetText = clickMatch[1].trim().replace(/(?:按钮|链接|菜单|图标)$/, "")
+      const targetText = cleanClickTarget(clickMatch[1])
       step.action = "click"
-      step.target = { by: "role", value: `button:${targetText}` }
+      // 菜单、导航、页签、链接在多数系统里不是 button 语义，直接用文本定位更稳
+      const textLike = /菜单|导航|页签|标签页|选项卡|链接|下拉/.test(line)
+      step.target = textLike
+        ? { by: "text", value: targetText }
+        : { by: "role", value: `button:${targetText}` }
       return step
     }
 
@@ -157,6 +166,23 @@ export function parseWithRules(text) {
 
 function extractQuoted(text) {
   return [...text.matchAll(/[「"']([^」"']+)[」"']/g)].map(m => m[1])
+}
+
+/**
+ * 清洗点击目标文本：去掉方位与容器修饰。
+ * "顶部菜单的站点实况" → "站点实况"；"左侧导航栏中的预报制作" → "预报制作"。
+ */
+function cleanClickTarget(raw) {
+  const original = raw.trim().replace(/[「」"']/g, "")
+  let text = original
+    // 方位修饰：顶部 / 左侧 / 页面右上角
+    .replace(/^(?:页面)?(?:顶部|底部|左侧|右侧|上方|下方|左上角|右上角|中间)的?/, "")
+    // 容器修饰：菜单中的 / 导航栏的 / 下拉菜单的
+    .replace(/^(?:导航栏|导航|菜单栏|菜单|页签|选项卡|标签页|工具栏|下拉框|下拉菜单|列表)(?:中|里|上|内)?的?/, "")
+    // 结尾的类型词
+    .replace(/(?:按钮|链接|菜单|图标|选项|页签)$/, "")
+    .trim()
+  return text || original
 }
 
 function normalizeUrl(value) {

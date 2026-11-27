@@ -38,6 +38,7 @@ export const LOCATORS = {
   label: "label",
   placeholder: "placeholder",
   text: "text",
+  textExact: "textExact",
   testId: "testId",
   css: "css"
 }

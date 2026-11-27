@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+// Flutter 自带 Flow 组件与本项目 Flow 模型重名，隐藏内置的以免歧义
+import 'package:flutter/material.dart' hide Flow;
 
 import '../models/flow.dart';
 import '../models/report.dart';

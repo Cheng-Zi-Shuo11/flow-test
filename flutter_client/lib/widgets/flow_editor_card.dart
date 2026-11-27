@@ -1,6 +1,7 @@
 import 'dart:convert';
 
-import 'package:flutter/material.dart';
+// Flutter 自带 Flow 组件与本项目 Flow 模型重名，隐藏内置的以免歧义
+import 'package:flutter/material.dart' hide Flow;
 
 import '../models/flow.dart';
 import '../services/api_service.dart';
@@ -303,6 +304,8 @@ class _FlowEditorCardState extends State<FlowEditorCard> {
               children: <Widget>[
                 Expanded(
                   child: DropdownButtonFormField<String>(
+                    // 需要随选择变化而刷新，故保留 value（initialValue 只在首次生效）
+                    // ignore: deprecated_member_use
                     value: flowValue,
                     decoration: const InputDecoration(
                       labelText: '已保存流程',
@@ -496,6 +499,7 @@ class _FlowEditorCardState extends State<FlowEditorCard> {
 
             // 浏览器下拉
             DropdownButtonFormField<String>(
+              // ignore: deprecated_member_use
               value: _channel,
               decoration: const InputDecoration(
                 labelText: '浏览器',

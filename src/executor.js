@@ -26,6 +26,8 @@ export function resolveLocator(page, target) {
       return page.getByPlaceholder(value)
     case "text":
       return page.getByText(value)
+    case "textExact":
+      return page.getByText(value, { exact: true })
     case "testId":
       return page.getByTestId(value)
     case "css":
@@ -35,6 +37,71 @@ export function resolveLocator(page, target) {
   }
 }
 
+/** 可点击元素的常见 role。菜单项、页签、树节点往往不是 button */
+const CLICK_ROLES = [
+  "button",
+  "menuitem",
+  "link",
+  "tab",
+  "treeitem",
+  "option",
+  "listitem",
+  "menuitemradio"
+]
+
+/** 可输入元素的常见 role */
+const FIELD_ROLES = ["textbox", "combobox", "searchbox", "spinbutton"]
+
+/**
+ * 生成候选定位链，从最精确到最宽松。
+ *
+ * 这是平台能适配"没有语义化标签的老系统"的关键：用户只写"点击站点实况"，
+ * 平台先按 role=button 找，找不到就依次退化到 menuitem/link/tab、精确文本、包含文本、CSS。
+ */
+export function buildCandidates(target, kind = "click") {
+  const raw = String(target?.value ?? "")
+  const list = []
+  const push = (by, value) => {
+    if (!value) return
+    if (!list.some(item => item.by === by && item.value === value)) list.push({ by, value })
+  }
+
+  if (target?.by === "role") {
+    const [role, ...rest] = raw.split(":")
+    const name = rest.join(":").trim()
+    push("role", raw)
+    if (name) {
+      const roles = kind === "field" ? FIELD_ROLES : CLICK_ROLES
+      for (const alt of roles) {
+        if (alt !== role.trim()) push("role", `${alt}:${name}`)
+      }
+      push("textExact", name)
+      push("text", name)
+    }
+    return list
+  }
+
+  if (kind === "field") {
+    push(target?.by, raw)
+    push("placeholder", raw)
+    push("label", raw)
+    push("css", `input[placeholder*="${raw}"], textarea[placeholder*="${raw}"]`)
+    push("css", `input[name="${raw}"], select[name="${raw}"], textarea[name="${raw}"]`)
+    return list
+  }
+
+  if (target?.by === "text") {
+    push("textExact", raw)
+    push("text", raw)
+  } else {
+    push(target?.by, raw)
+    push("textExact", raw)
+    push("text", raw)
+  }
+  push("css", `[title="${raw}"], [aria-label="${raw}"]`)
+  return list
+}
+
 /** 在页面打开目标地址，支持相对路径与绝对 URL */
 export async function navigate(page, url, baseUrl) {
   const fullUrl = /^(https?:)?\/\//.test(url) ? url : new URL(url, baseUrl || undefined).toString()
@@ -42,11 +109,145 @@ export async function navigate(page, url, baseUrl) {
   return fullUrl
 }
 
+/** count() 在页面跳转或 frame 卸载时会抛错，这里吞掉当 0 处理 */
+async function countSafe(locator) {
+  try {
+    return await locator.count()
+  } catch {
+    return 0
+  }
+}
+
+/** 在单个 frame 内按候选链尝试执行动作 */
+async function attemptInFrame(frame, candidates, perform, timeout) {
+  const probe = Math.min(1500, timeout)
+  for (const candidate of candidates) {
+    let locator
+    try {
+      locator = resolveLocator(frame, candidate)
+    } catch {
+      continue
+    }
+    if (!locator) continue
+    if ((await countSafe(locator)) === 0) continue
+    try {
+      const node = locator.first()
+      await node.waitFor({ state: "visible", timeout: probe })
+      await perform(node)
+      return { ok: true, used: candidate }
+    } catch {
+      // 该候选存在但不可交互（被遮挡、只读等），继续试下一个
+    }
+  }
+  return { ok: false }
+}
+
+/** 定位失败时收集现场信息，给出可操作的诊断，而不是只抛一句 timeout */
+async function collectDiagnostics(page, target) {
+  const keyword = String(target?.value ?? "").replace(/^[a-zA-Z]+:/, "")
+  const lines = []
+
+  let info = null
+  try {
+    info = await page.evaluate(kw => {
+      const matches = []
+      for (const el of document.querySelectorAll("body *")) {
+        const text = (el.textContent || "").trim()
+        if (!text || text.length > 80 || !text.includes(kw)) continue
+        const rect = el.getBoundingClientRect()
+        const style = getComputedStyle(el)
+        const visible =
+          rect.width > 0 && rect.height > 0 && style.visibility !== "hidden" && style.display !== "none"
+        matches.push({
+          tag: el.tagName.toLowerCase(),
+          role: el.getAttribute("role") || "",
+          visible,
+          text: text.slice(0, 40)
+        })
+        if (matches.length >= 10) break
+      }
+      return { matches, frames: window.frames.length, title: document.title, url: location.href }
+    }, keyword)
+  } catch (error) {
+    lines.push(`页面诊断失败: ${error.message}`)
+  }
+
+  if (info) {
+    const visible = info.matches.filter(m => m.visible)
+    const hidden = info.matches.filter(m => !m.visible)
+    lines.push(`当前页面: ${info.title || "(无标题)"} ${info.url}`)
+
+    if (!info.matches.length) {
+      lines.push(`页面上找不到任何包含「${keyword}」的元素`)
+      if (info.frames > 0) {
+        lines.push(`页面含 ${info.frames} 个内嵌框架，若内容在框架内且已尝试仍失败，说明该框架尚未加载完成`)
+      }
+      lines.push(`建议: 确认登录后菜单已展开；或在步骤前加一步「等待 2000」`)
+    } else if (!visible.length) {
+      lines.push(`找到 ${hidden.length} 个包含「${keyword}」的元素，但都不可见`)
+      hidden.slice(0, 3).forEach(m => lines.push(`  - <${m.tag}${m.role ? ` role="${m.role}"` : ""}> ${m.text}`))
+      lines.push(`建议: 菜单可能是折叠状态，先补一步点击展开菜单，或加「等待」`)
+    } else {
+      lines.push(`找到 ${visible.length} 个可见的候选元素（说明定位方式不匹配，元素本身存在）:`)
+      visible
+        .slice(0, 5)
+        .forEach(m => lines.push(`  - <${m.tag}${m.role ? ` role="${m.role}"` : ""}> ${m.text}`))
+      const nonButton = visible.find(m => !["button", "menuitem", "link", "tab"].includes(m.role))
+      if (nonButton) {
+        lines.push(`建议: 该元素是 <${nonButton.tag}>，没有按钮语义`)
+        lines.push(`  把步骤改写成 {"by":"css","value":"#选择器"} 或 {"by":"text","value":"${keyword}"} 可稳定命中`)
+      }
+    }
+  }
+
+  return lines.join("\n")
+}
+
+/**
+ * 带降级的元素动作：主定位失败时自动尝试其他 role / 文本 / CSS，并在页面各 iframe 中查找。
+ * 这样"点击顶部菜单站点实况"这类自然语言步骤，不必要求被测系统有语义化标签。
+ */
+export async function actWithFallback(page, target, options) {
+  const { kind = "click", timeout = 30000, perform, actionLabel = "操作" } = options
+  const candidates = buildCandidates(target, kind)
+  if (!candidates.length) throw new Error(`缺少可用的定位描述: ${JSON.stringify(target)}`)
+
+  for (const frame of page.frames()) {
+    const result = await attemptInFrame(frame, candidates, perform, Math.min(timeout, 8000))
+    if (result.ok) {
+      return { used: result.used, fallback: result.used.by !== target.by || result.used.value !== target.value }
+    }
+  }
+
+  // 元素可能还在渲染（SPA 路由切换后菜单才挂载），给主定位一次完整等待
+  const primary = candidates[0]
+  try {
+    const locator = resolveLocator(page, primary)
+    if (locator) {
+      await locator.first().waitFor({ state: "visible", timeout: Math.min(timeout, 10000) })
+      await perform(locator.first())
+      return { used: primary, fallback: false }
+    }
+  } catch {
+    // 落到诊断
+  }
+
+  const diagnostics = await collectDiagnostics(page, target)
+  const display = String(target.value ?? "").replace(/^[a-zA-Z]+:/, "")
+  throw new Error(`无法定位「${display}」（${actionLabel}失败）\n${diagnostics}`)
+}
+
 /** 执行单个断言，返回 { passed, detail } */
 export async function runAssertion(page, assertion, target) {
   const type = assertion.type
   const expected = assertion.value
   const locator = target ? resolveLocator(page, target) : null
+
+  // 需要期望值的断言类型；漏填时给出明确提示，而不是拼出 "包含 undefined"
+  const needsValue = ["text", "textContains", "url", "urlContains", "count", "value", "title"]
+  if (needsValue.includes(type) && (expected === undefined || expected === null || expected === "")) {
+    return { passed: false, detail: `断言 ${type} 缺少 value（期望值），请补全后重试` }
+  }
 
   try {
     switch (type) {
@@ -134,24 +335,54 @@ export async function executeStep(page, step, flow) {
       case "navigate":
         result.detail = await navigate(page, step.target.value, baseUrl)
         break
-      case "click":
-        await resolveLocator(page, step.target).first().click({ timeout })
-        result.detail = `已点击 ${step.target.value}`
+      case "click": {
+        const { used, fallback } = await actWithFallback(page, step.target, {
+          kind: "click",
+          timeout,
+          actionLabel: "点击",
+          perform: node => node.click({ timeout: Math.min(timeout, 10000) })
+        })
+        result.detail = `已点击 ${step.target.value}${fallback ? `（降级定位: ${used.by}=${used.value}）` : ""}`
         break
-      case "fill":
-        await resolveLocator(page, step.target).first().fill(String(step.value ?? ""), { timeout })
-        result.detail = `已输入 ${step.value ?? ""}`
+      }
+      case "fill": {
+        const text = String(step.value ?? "")
+        const { used, fallback } = await actWithFallback(page, step.target, {
+          kind: "field",
+          timeout,
+          actionLabel: "输入",
+          perform: node => node.fill(text, { timeout: Math.min(timeout, 10000) })
+        })
+        result.detail = `已输入 ${text}${fallback ? `（降级定位: ${used.by}=${used.value}）` : ""}`
         break
-      case "select":
-        await resolveLocator(page, step.target).first().selectOption(String(step.value ?? ""), { timeout })
-        result.detail = `已选择 ${step.value ?? ""}`
+      }
+      case "select": {
+        const text = String(step.value ?? "")
+        const { used, fallback } = await actWithFallback(page, step.target, {
+          kind: "field",
+          timeout,
+          actionLabel: "选择",
+          perform: node => node.selectOption(text, { timeout: Math.min(timeout, 10000) })
+        })
+        result.detail = `已选择 ${text}${fallback ? `（降级定位: ${used.by}=${used.value}）` : ""}`
         break
+      }
       case "hover":
-        await resolveLocator(page, step.target).first().hover({ timeout })
+        await actWithFallback(page, step.target, {
+          kind: "click",
+          timeout,
+          actionLabel: "悬停",
+          perform: node => node.hover({ timeout: Math.min(timeout, 10000) })
+        })
         result.detail = `已悬停 ${step.target.value}`
         break
       case "press":
-        await resolveLocator(page, step.target).first().press(String(step.value ?? "Enter"), { timeout })
+        await actWithFallback(page, step.target, {
+          kind: "field",
+          timeout,
+          actionLabel: "按键",
+          perform: node => node.press(String(step.value ?? "Enter"), { timeout: Math.min(timeout, 10000) })
+        })
         result.detail = `已按键 ${step.value ?? "Enter"}`
         break
       case "wait": {
@@ -194,6 +425,17 @@ export async function executeStep(page, step, flow) {
   return result
 }
 
+/** 点击后若系统打开了新标签页或新窗口，返回新页面；否则返回 null */
+async function adoptNewPage(context, page, before, timeout = 800) {
+  const deadline = Date.now() + timeout
+  do {
+    const opened = context.pages().filter(item => !before.has(item) && item !== page)
+    if (opened.length) return opened[opened.length - 1]
+    await new Promise(resolve => setTimeout(resolve, 100))
+  } while (Date.now() < deadline)
+  return null
+}
+
 /**
  * 运行完整流程。
  * @param {object} flow 流程定义
@@ -211,7 +453,7 @@ export async function runFlow(flow, options = {}) {
   const context = await browser.newContext({
     viewport: resolved.config?.viewport || { width: 1280, height: 720 }
   })
-  const page = await context.newPage()
+  let page = await context.newPage()
 
   const report = {
     name: resolved.name,
@@ -224,7 +466,20 @@ export async function runFlow(flow, options = {}) {
 
   try {
     for (const step of resolved.steps) {
+      const pagesBefore = new Set(context.pages())
       const result = await executeStep(page, step, resolved)
+
+      // 点击菜单/链接后系统可能打开新标签页，后续步骤必须跟到新页面，
+      // 否则会一直在旧页面上找不到元素（气象系统常见：菜单在新窗口打开）
+      if (step.action === "click" && result.passed) {
+        const next = await adoptNewPage(context, page, pagesBefore)
+        if (next) {
+          await next.waitForLoadState("domcontentloaded").catch(() => {})
+          page = next
+          result.detail = `${result.detail}；已切换到新打开的页面`
+        }
+      }
+
       report.steps.push(result)
       if (result.passed) report.passedCount++
       else {

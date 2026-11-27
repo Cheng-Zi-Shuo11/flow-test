@@ -45,7 +45,16 @@ jobs:
         working-directory: flutter_client
         run: flutter pub get
 
-      # 首次构建时补齐平台工程目录（正常应在仓库中已提交）
+      # 编译级门禁：静态检查 + 界面冒烟测试（无需 Xcode，先卡住明显问题）
+      - name: Analyze
+        working-directory: flutter_client
+        run: flutter analyze
+
+      - name: Widget tests
+        working-directory: flutter_client
+        run: flutter test
+
+      # 首次构建时补零平台工程目录（正常仓库中已提交）
       - name: Ensure macOS project files
         working-directory: flutter_client
         run: |

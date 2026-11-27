@@ -14,6 +14,8 @@ flutter_client/.flutter-plugins-dependencies
 flutter_client/.packages
 flutter_client/ios/Pods/
 flutter_client/macos/Pods/
+flutter_client/.idea/
+flutter_client/*.iml
 
 # 临时下载
 flutter_sdk_auto.zip

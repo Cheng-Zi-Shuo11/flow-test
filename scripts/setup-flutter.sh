@@ -34,37 +34,47 @@ flutter create --platforms=macos,windows .
 echo "==> 恢复 pubspec.yaml..."
 mv pubspec.yaml.bak pubspec.yaml
 
+# flutter create 会生成引用模板 MyApp 的 widget_test.dart，本项目有自己的测试文件，
+# 保留模板测试会导致 analyze 直接报错。
+if [ -f test/widget_test.dart ]; then
+  rm -f test/widget_test.dart
+  echo "==> 已移除模板测试 test/widget_test.dart"
+fi
+
 # ---------- 修补 macOS entitlements ----------
 # Flutter macOS 默认开启 App Sandbox，沙盒内无法启动外部进程（内嵌 Node 引擎），
 # 且默认未授予出站网络权限。这里显式关闭沙盒并放开网络。
+#
+# 直接写完整 XML：不要用 plistlib 往返读写，一旦写入中途失败会清空文件。
 echo "==> 修补 macOS entitlements..."
-python3 - <<'PY'
-import plistlib
-import pathlib
-import sys
+ENTITLEMENTS_CONTENT='<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>com.apple.security.app-sandbox</key>
+	<false/>
+	<key>com.apple.security.cs.allow-jit</key>
+	<true/>
+	<key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+	<true/>
+	<key>com.apple.security.cs.disable-library-validation</key>
+	<true/>
+	<key>com.apple.security.network.client</key>
+	<true/>
+	<key>com.apple.security.network.server</key>
+	<true/>
+</dict>
+</plist>
+'
 
-patched = []
-for name in ("DebugProfile.entitlements", "Release.entitlements"):
-    path = pathlib.Path("macos/Runner") / name
-    if not path.exists():
-        print(f"  [跳过] {path} 不存在")
-        continue
-    with open(path, "rb") as handle:
-        data = plistlib.load(handle)
-
-    data["com.apple.security.app-sandbox"] = False
-    data["com.apple.security.network.client"] = True
-    data["com.apple.security.network.server"] = True
-    data["com.apple.security.cs.allow-jit"] = True
-    data["com.apple.security.cs.allow-unsigned-executable-memory"] = True
-
-    with open(path, "wb") as handle:
-        plistlib.dump(handle, data)
-    patched.append(str(path))
-
-if not patched:
-    print("  [警告] 未找到 entitlements 文件，跳过")
-PY
+if [ -d macos/Runner ]; then
+  for name in DebugProfile.entitlements Release.entitlements; do
+    printf '%s' "$ENTITLEMENTS_CONTENT" > "macos/Runner/$name"
+    echo "  已写入 macos/Runner/$name"
+  done
+else
+  echo "  [跳过] macos/Runner 不存在（请先生成平台工程）"
+fi
 
 echo "==> 拉取 Flutter 依赖..."
 flutter pub get

@@ -1,4 +1,4 @@
-/// 测试报告相关的数据模型，对应服务端 executor.js / reporter.js 的 JSON 结构。
+// 测试报告相关的数据模型，对应服务端 executor.js / reporter.js 的 JSON 结构。
 
 /// 单个步骤的执行结果。
 class StepResult {

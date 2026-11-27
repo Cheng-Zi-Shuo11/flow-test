@@ -6,9 +6,7 @@ import 'dart:io';
 /// Flutter 客户端启动后在后台拉起 FlowTest 的 Node HTTP 服务，
 /// 并通过 [baseUrl] 暴露给上层 API 层调用；用户无需手动执行 `npm start`。
 class EngineService {
-  EngineService({String? engineDir, int port = 3777})
-      : _engineDirOverride = engineDir,
-        port = port;
+  EngineService({String? engineDir, this.port = 3777}) : _engineDirOverride = engineDir;
 
   /// 引擎监听端口，与上层 ApiService 保持一致。
   final int port;

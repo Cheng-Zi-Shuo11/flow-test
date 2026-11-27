@@ -149,13 +149,40 @@ cd ../.. && node src/cli.js run examples/assertions.flow.json --channel chrome -
 | `role` | 语义角色，最抗改版 | `button:登录` |
 | `label` | 表单标签 | `用户名` |
 | `placeholder` | 输入提示 | `用户名` |
-| `text` | 可见文本 | `登录成功` |
+| `text` | 可见文本（包含匹配） | `登录成功` |
+| `textExact` | 可见文本（完全相等） | `站点实况` |
 | `testId` | 测试标识 | `submit-btn` |
 | `css` | CSS 选择器（兜底） | `#loginBtn` |
+
+### 定位降级与失败诊断
+
+老系统经常没有语义化标签：顶部菜单可能是 `<li>`、`<div>`，不是 `<button>`。平台不会因为一次定位失败就判死，而是按**候选链**依次尝试：
+
+| 原定位 | 降级顺序 |
+|---|---|
+| `role: button:X` | `button` → `menuitem` → `link` → `tab` → `treeitem` → `option` → `listitem` → 精确文本 → 文本包含 |
+| `text: X` | 精确文本 → 文本包含 → `[title]`/`[aria-label]` |
+| `placeholder: X` | `placeholder` → `label` → `name` 属性 → `placeholder*=` CSS |
+
+同时会在页面的各个 iframe 中查找（气象系统常用 iframe 嵌子页面）。命中降级定位时，步骤详情会写明 `（降级定位: textExact=站点实况）`，便于你之后把流程改成更稳的写法。
+
+点击后如果系统打开了新标签页，后续步骤会自动切换到新页面。
+
+真的找不到时，报错不是一句 timeout，而是给出可操作的现场信息：
+
+```
+无法定位「站点实况」（点击失败）
+当前页面: M5 综合业务平台 http://xxx/home
+找到 2 个包含「站点实况」的元素，但都不可见
+  - <li> 站点实况
+建议: 菜单可能是折叠状态，先补一步点击展开菜单，或加「等待」
+```
 
 ### 支持的断言类型
 
 `visible`、`hidden`、`text`、`textContains`、`url`、`urlContains`、`count`、`value`、`title`、`enabled`、`disabled`
+
+需要期望值的断言（`text`/`textContains`/`url`/`urlContains`/`count`/`value`/`title`）漏填 `value` 时，会直接提示「缺少 value」，不会拼出 `包含 undefined`。
 
 ## 变量机制
 
@@ -191,7 +218,7 @@ flow-test/
 npm test
 ```
 
-当前 50 个测试覆盖：
+当前 61 个测试覆盖：
 
 | 测试文件 | 覆盖内容 |
 |---|---|
@@ -199,6 +226,7 @@ npm test
 | `assertions.test.js` | 可见性断言边界（隐藏元素不误判） |
 | `boundary.test.js` | 流程/变量/解析器/定位器的边界输入 |
 | `batch.test.js` | 批量聚合、失败继续/中断、异常隔离 |
+| `fallback.test.js` | 定位降级链、iframe 查找、新窗口接管、失败诊断信息 |
 
 ## 设计取舍
 
